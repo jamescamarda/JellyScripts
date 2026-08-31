@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MusicBangz
 // @namespace    https://github.com/jamescamarda/JellyScripts
-// @version      1.0
+// @version      1.0.1
 // @description  Search Discogs music metadata with configurable sources and an optional locked search tab.
 // @compatible    violentmonkey
 // @match        *://*/*
@@ -123,6 +123,7 @@
             GM_setValue(preservingTargetKey, '');
             GM_setValue(pendingTargetKey, null);
           }
+          updateTabLockMenu();
         },
         tabLockMenuId,
       );
@@ -133,7 +134,10 @@
       Object.entries(sources).forEach(([id, source]) => {
         sourceMenuIds[id] = registerMenu(
           `${id === active ? '✓ ' : ''}Search source: ${source.label}`,
-          () => GM_setValue(sourceKey, id),
+          () => {
+            GM_setValue(sourceKey, id);
+            updateSourceMenu();
+          },
           sourceMenuIds[id],
         );
       });
@@ -147,7 +151,7 @@
 
   function registerMenu(label, handler, id) {
     if (typeof GM_registerMenuCommand !== 'function') return id;
-    return safeRun(() => GM_registerMenuCommand(label, handler, { id, autoClose: false }))
+    return safeRun(() => GM_registerMenuCommand(label, handler, { id }))
       || safeRun(() => GM_registerMenuCommand(label, handler))
       || id;
   }
