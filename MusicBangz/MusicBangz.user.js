@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MusicBangz
 // @namespace    https://github.com/jamescamarda/JellyScripts
-// @version      1.0.1
+// @version      1.0.2
 // @description  Search Discogs music metadata with configurable sources and an optional locked search tab.
 // @compatible    violentmonkey
 // @match        *://*/*
@@ -151,7 +151,7 @@
 
   function registerMenu(label, handler, id) {
     if (typeof GM_registerMenuCommand !== 'function') return id;
-    return safeRun(() => GM_registerMenuCommand(label, handler, { id }))
+    return safeRun(() => GM_registerMenuCommand(label, handler, { id, autoClose: false }))
       || safeRun(() => GM_registerMenuCommand(label, handler))
       || id;
   }
