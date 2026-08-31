@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MusicBangz
 // @namespace    https://github.com/jamescamarda/JellyScripts
-// @version      1.0.2
+// @version      1.0
 // @description  Search Discogs music metadata with configurable sources and an optional locked search tab.
 // @compatible    violentmonkey
 // @match        *://*/*
