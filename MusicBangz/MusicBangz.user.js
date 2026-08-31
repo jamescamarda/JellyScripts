@@ -151,7 +151,7 @@
 
   function registerMenu(label, handler, id) {
     if (typeof GM_registerMenuCommand !== 'function') return id;
-    return safeRun(() => GM_registerMenuCommand(label, handler, { id, autoClose: false }))
+    return safeRun(() => GM_registerMenuCommand(label, handler, { id }))
       || safeRun(() => GM_registerMenuCommand(label, handler))
       || id;
   }
