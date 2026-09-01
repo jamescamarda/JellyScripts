@@ -499,10 +499,22 @@
     if (cells.length < 2 || !isDiscogsTrackRow(row, cells)) return null;
 
     const legacyArtistCell = row.querySelector('.tracklist_track_artists');
-    const hasTrackArtist = Boolean(legacyArtistCell) || cells.length >= 4;
+    // Discogs also renders compact tracklists with one metadata cell like
+    // "Artist – Track". Its authority/profile badges live beside the artist
+    // link, so use the link text rather than the cell's complete text.
+    const compactArtistLinks = [
+      ...(cells[1]?.querySelectorAll('a[href*="/artist/"]') || []),
+    ];
+    const hasSeparateArtistCell = Boolean(legacyArtistCell) || cells.length >= 4;
+    const hasTrackArtist = hasSeparateArtistCell || compactArtistLinks.length > 0;
     const artistCell = legacyArtistCell || (hasTrackArtist ? cells[1] : null);
-    const titleCell = row.querySelector('.tracklist_track_title') || (hasTrackArtist ? cells[2] : cells[1]);
-    const artist = cleanArtist(artistCell?.textContent || discogsReleaseArtist());
+    const titleCell = row.querySelector('.tracklist_track_title') ||
+      (hasSeparateArtistCell ? cells[2] : cells[1]);
+    const compactArtist = compactArtistLinks
+      .map((link) => cleanText(link.textContent || ''))
+      .filter(Boolean)
+      .join(', ');
+    const artist = cleanArtist(compactArtist || artistCell?.textContent || discogsReleaseArtist());
     const titleTarget = discogsTrackTitleTarget(titleCell);
     const title = cleanText(titleTarget?.textContent || '');
 
@@ -516,9 +528,44 @@
 
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let textNode = walker.nextNode();
+    let titleFollowsSeparator = false;
     while (textNode && !cleanText(textNode.nodeValue || '')) {
       textNode = walker.nextNode();
     }
+
+    // In compact rows the first meaningful node belongs to the artist link.
+    // Find the text after the artist/title separator instead, while retaining
+    // the old first-text-node behaviour for the normal separate title cell.
+    if (container.querySelector('a[href*="/artist/"]')) {
+      while (textNode) {
+        const text = textNode.nodeValue || '';
+        const inlineTitle = text.match(/[-–—]\s*(\S[\s\S]*)$/);
+        if (titleFollowsSeparator && cleanText(text)) {
+          const target = document.createElement('span');
+          target.textContent = text;
+          textNode.parentNode.insertBefore(target, textNode);
+          textNode.remove();
+          return target;
+        }
+        if (inlineTitle) {
+          const title = inlineTitle[1];
+          const separatorEnd = text.length - title.length;
+          const before = text.slice(0, separatorEnd);
+          const after = text.slice(separatorEnd + title.length);
+          const target = document.createElement('span');
+          target.textContent = title;
+          textNode.parentNode.insertBefore(document.createTextNode(before), textNode);
+          textNode.parentNode.insertBefore(target, textNode);
+          if (after) textNode.parentNode.insertBefore(document.createTextNode(after), textNode);
+          textNode.remove();
+          return target;
+        }
+        if (/[-–—]\s*$/.test(text)) titleFollowsSeparator = true;
+        textNode = walker.nextNode();
+      }
+      return null;
+    }
+
     if (!textNode) return null;
 
     const text = textNode.nodeValue || '';
