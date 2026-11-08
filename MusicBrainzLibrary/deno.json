@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "test": "deno test tests/",
+    "check": "deno check src/coordinator.ts tools/build.ts && deno lint && deno fmt --check",
+    "build": "deno run --allow-read --allow-write --allow-run tools/build.ts"
+  },
+  "exclude": [
+    "SorseeLoved.user.js",
+    ".local"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:node-taglib-sharp@6.0.3": "6.0.3"
+  },
+  "npm": {
+    "iconv-lite@0.6.3": {
+      "integrity": "sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==",
+      "dependencies": [
+        "safer-buffer"
+      ]
+    },
+    "invert-kv@3.0.1": {
+      "integrity": "sha512-CYdFeFexxhv/Bcny+Q0BfOV+ltRlJcd4BBZBYFX/O0u4npJrgZtIcjokegtiSMAvlMTJ+Koq0GBCc//3bueQxw=="
+    },
+    "lcid@3.1.1": {
+      "integrity": "sha512-M6T051+5QCGLBQb8id3hdvIW8+zeFV2FyBGFS9IEK5H9Wt4MueD4bW1eWikpHgZp+5xR3l5c8pZUkQsIA0BFZg==",
+      "dependencies": [
+        "invert-kv"
+      ]
+    },
+    "node-taglib-sharp@6.0.3": {
+      "integrity": "sha512-dT5G3wbPtwCnG1j3Rrts7LlyX5r5Xo0A2G/omt7akrcbSm6iPGrNgjdwG/KlBKbiJjUj4umr7qak9jDZOBvFJg==",
+      "dependencies": [
+        "iconv-lite",
+        "os-locale",
+        "uuid"
+      ]
+    },
+    "os-locale@6.0.2": {
+      "integrity": "sha512-qIb8bzRqaN/vVqEYZ7lTAg6PonskO7xOmM7OClD28F6eFa4s5XGe4bGpHUHMoCHbNNuR0pDYFeSLiW5bnjWXIA==",
+      "dependencies": [
+        "lcid"
+      ]
+    },
+    "safer-buffer@2.1.2": {
+      "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="
+    },
+    "uuid@8.3.2": {
+      "integrity": "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==",
+      "deprecated": true,
+      "bin": true
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:node-taglib-sharp@6.0.3"
+    ]
+  }
+}

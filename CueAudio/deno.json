@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "start": "deno run --allow-read --allow-write --allow-run --allow-env cue_audio.ts",
+    "test": "deno test --allow-read --allow-write --allow-run --allow-env",
+    "check": "deno fmt --check && deno lint && deno check cue_audio.ts matchAndTag.ts cue_audio_test.ts"
+  },
+  "imports": {
+    "node-taglib-sharp": "npm:node-taglib-sharp@6.0.3"
+  }
+}
