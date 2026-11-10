@@ -1,11 +1,15 @@
 {
   "tasks": {
     "test": "deno test tests/",
-    "check": "deno check src/coordinator.ts tools/build.ts && deno lint && deno fmt --check",
-    "build": "deno run --allow-read --allow-write --allow-run tools/build.ts"
+    "check": "deno check src/coordinator.ts tools/build.ts tests/review_browser_check.ts && deno lint && deno fmt --check",
+    "build": "deno run --allow-read --allow-write --allow-run tools/build.ts",
+    "test:browser": "deno run --allow-all tests/review_browser_check.ts"
   },
   "exclude": [
     "SorseeLoved.user.js",
     ".local"
-  ]
+  ],
+  "imports": {
+    "playwright": "npm:playwright@1.61.1"
+  }
 }

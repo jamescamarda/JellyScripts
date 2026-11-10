@@ -13,6 +13,13 @@ import {
   UserscriptBrowser,
 } from "./userscript_browser.ts";
 import { runReleases } from "./workflow.ts";
+import {
+  compileReview,
+  type ReviewItem,
+  type ReviewRecord,
+  type ReviewSummary,
+  reviewText,
+} from "./review.ts";
 
 const store: Store = {
   load: (key) => GM.getValue(`${PREFIX}data:${key}`),
@@ -39,7 +46,32 @@ async function mount() {
   progress.hidden = true;
   const elapsed = document.createElement("span");
   elapsed.style.marginInlineStart = "0.5rem";
+  const manualHeading = document.createElement("h3");
+  manualHeading.textContent = "Manual intervention (0)";
+  const manualStatus = document.createElement("p");
+  const manualList = document.createElement("ul");
+  manualList.id = "sorsee-manual-review";
+  const exportReview = document.createElement("button");
+  exportReview.type = "button";
+  exportReview.style.minBlockSize = "24px";
+  exportReview.textContent = "Download manual-intervention list";
+  exportReview.disabled = true;
+  let reviewItems: ReviewItem[] = [];
+  exportReview.addEventListener("click", () => {
+    const url = URL.createObjectURL(
+      new Blob([reviewText(reviewItems)], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "musicbrainz-manual-intervention.txt";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+  const allResults = document.createElement("details");
+  const allResultsTitle = document.createElement("summary");
+  allResultsTitle.textContent = "All release outcomes";
   const resultList = document.createElement("ul");
+  allResults.append(allResultsTitle, resultList);
   const totals = document.createElement("p");
   const diagnostics = document.createElement("details");
   const diagnosticTitle = document.createElement("summary");
@@ -64,6 +96,7 @@ async function mount() {
     "opening-release": "Opening release",
     "read-album": "Reading provider metadata",
   };
+  let activeRelease: string | undefined;
   const report = (message: string) => {
     detail.textContent = message;
     try {
@@ -80,9 +113,15 @@ async function mount() {
           outcomeNames[event.status || event.stage] || event.status ||
           event.stage
         }`;
-        if (event.status && event.release) {
-          void refreshOutcomes().catch(console.error);
+        if (event.release && event.stage === "opening-release") {
+          activeRelease = event.release;
         }
+        if (event.release && event.status && activeRelease === event.release) {
+          activeRelease = undefined;
+        }
+        if (
+          event.release && (event.status || event.stage === "opening-release")
+        ) void refreshOutcomes().catch(console.error);
         if (typeof event.completed === "number") {
           progress.hidden = false;
           progress.max = Math.max(1, event.total);
@@ -102,88 +141,101 @@ async function mount() {
   evidenceLabel.textContent = "Inspect saved release evidence ";
   const outcomes = document.createElement("select");
   evidenceLabel.append(outcomes);
+  let refreshGeneration = 0;
   async function refreshOutcomes() {
-    outcomes.replaceChildren(new Option("Choose a release", ""));
-    resultList.replaceChildren();
-    let verifiedRecordingLinks = 0,
-      verifiedAlbumLinks = 0,
-      reviewCount = 0,
-      processed = 0;
+    const generation = ++refreshGeneration;
+    const records: { key: string; record: ReviewRecord }[] = [];
     for (const key of await GM.listValues()) {
       if (!key.startsWith(`${PREFIX}data:loved/releases/`)) continue;
-      const record = await GM.getValue<
-        {
-          title?: string;
-          release: string;
-          status: string;
-          note?: string;
-          error?: string;
-          confirmed?: unknown[];
-          releaseSources?: { confirmed?: unknown[] };
-          mapping?: { rejected?: { reason: string }[] };
-        }
-      >(key);
-      if (record) {
-        processed++;
-        verifiedRecordingLinks += record.confirmed?.length ?? 0;
-        verifiedAlbumLinks += record.releaseSources?.confirmed?.length ?? 0;
-        const needsReview = ![
-          "verified",
-          "planned",
-          "no-verified-new-links",
-          "no-digital-candidate",
-        ].includes(record.status) || !!record.mapping?.rejected?.length;
-        if (needsReview) reviewCount++;
-        const item = document.createElement("li"),
-          link = document.createElement("a");
-        link.href = `https://musicbrainz.org/release/${record.release}`;
-        link.target = "_blank";
-        link.rel = "noopener";
-        link.textContent = record.title ?? record.release;
-        const reason = record.error || record.note ||
-          record.mapping?.rejected?.[0]?.reason;
-        item.append(
-          link,
-          ` — ${outcomeNames[record.status] || record.status}${
-            reason ? ": " + reason : ""
-          }`,
-        );
-        resultList.append(item);
-        outcomes.append(
-          new Option(
-            `${record.title ?? record.release}: ${record.status}`,
-            key,
-          ),
-        );
-      }
+      const record = await GM.getValue<ReviewRecord>(key);
+      if (record) records.push({ key, record });
     }
-    totals.textContent =
-      `${processed} releases checked · ${verifiedRecordingLinks} recording links verified · ${verifiedAlbumLinks} album links verified · ${reviewCount} need review`;
-    const summary = await store.load<
-      {
-        withoutRelease?: string[];
-        auditFailures?: { id: string; title?: string; error?: string }[];
-      }
-    >("loved/summary.json");
-    for (
-      const issue of [
-        ...(summary?.withoutRelease ?? []).map((id) => ({
-          id,
-          title: id,
-          error: "No associated release found",
-        })),
-        ...summary?.auditFailures ?? [],
-      ]
-    ) {
-      const item = document.createElement("li"),
+    const summary = await store.load<ReviewSummary>("loved/summary.json");
+    const audit = await store.load<
+      { results: { id: string; title?: string }[] }
+    >("loved/audit/audit.json");
+    if (generation !== refreshGeneration) return;
+    // Commit the list and count from the same snapshot; older refreshes cannot overwrite it.
+    reviewItems = compileReview(
+      records.map((row) =>
+        row.record.release === activeRelease
+          ? { ...row.record, status: "probing" }
+          : row.record
+      ),
+      summary,
+      audit?.results,
+    );
+    const releases =
+      reviewItems.filter((item) => item.type === "release").length;
+    const recordings = reviewItems.length - releases;
+    manualHeading.textContent = `Manual intervention (${reviewItems.length})`;
+    manualStatus.textContent = reviewItems.length
+      ? `${releases} releases and ${recordings} recordings need attention.`
+      : "No manual intervention currently recorded. Pending work is not included.";
+    exportReview.disabled = !reviewItems.length;
+    const focusedLink = document.activeElement instanceof HTMLAnchorElement &&
+        manualList.contains(document.activeElement)
+      ? document.activeElement.href
+      : undefined;
+    manualList.replaceChildren();
+    for (const item of reviewItems) {
+      const row = document.createElement("li"),
         link = document.createElement("a");
-      link.href = `https://musicbrainz.org/recording/${issue.id}`;
+      link.href = item.url;
       link.target = "_blank";
       link.rel = "noopener";
-      link.textContent = issue.title || issue.id;
-      item.append(link, ` — ${issue.error || "Lookup needs review"}`);
-      resultList.append(item);
+      link.textContent = item.title;
+      const reasons = document.createElement("ul");
+      for (const reason of item.reasons) {
+        const entry = document.createElement("li");
+        entry.textContent = reason;
+        reasons.append(entry);
+      }
+      for (const recording of item.recordings) {
+        const entry = document.createElement("li"),
+          recordingLink = document.createElement("a");
+        recordingLink.href = recording.url;
+        recordingLink.target = "_blank";
+        recordingLink.rel = "noopener";
+        recordingLink.textContent = recording.title;
+        entry.append(recordingLink, ` — ${recording.reason}`);
+        reasons.append(entry);
+      }
+      row.append(link, reasons);
+      manualList.append(row);
     }
+    if (focusedLink) {
+      [...manualList.querySelectorAll("a")].find((link) =>
+        link.href === focusedLink
+      )?.focus({ preventScroll: true });
+    }
+    const selected = outcomes.value;
+    outcomes.replaceChildren(new Option("Choose a release", ""));
+    resultList.replaceChildren();
+    let verifiedRecordingLinks = 0, verifiedAlbumLinks = 0;
+    for (const { key, record } of records) {
+      verifiedRecordingLinks += record.confirmed?.length ?? 0;
+      verifiedAlbumLinks += record.releaseSources?.confirmed?.length ?? 0;
+      const row = document.createElement("li"),
+        link = document.createElement("a");
+      link.href = `https://musicbrainz.org/release/${
+        encodeURIComponent(record.release)
+      }`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = record.title || record.release;
+      row.append(link, ` — ${outcomeNames[record.status] || record.status}`);
+      resultList.append(row);
+      outcomes.append(
+        new Option(`${record.title || record.release}: ${record.status}`, key),
+      );
+    }
+    if ([...outcomes.options].some((option) => option.value === selected)) {
+      outcomes.value = selected;
+    }
+    allResultsTitle.textContent = `All release outcomes (${records.length})`;
+    totals.textContent =
+      `${records.length} release outcomes · ${verifiedRecordingLinks} recording links verified · ${verifiedAlbumLinks} album links verified · ${reviewItems.length} need manual intervention`;
   }
   outcomes.addEventListener("change", async () => {
     try {
@@ -428,7 +480,11 @@ async function mount() {
     progress,
     elapsed,
     totals,
-    resultList,
+    manualHeading,
+    manualStatus,
+    exportReview,
+    manualList,
+    allResults,
     diagnostics,
   );
   diagnostics.append(detail, evidenceLabel, evidence);

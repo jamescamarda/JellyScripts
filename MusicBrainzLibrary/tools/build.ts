@@ -17,7 +17,7 @@ try {
   const header = `// ==UserScript==
 // @name         Sorsee Loved enrichment
 // @namespace    https://github.com/jamescamarda/JellyScripts
-// @version      2026.11.07.3
+// @version      2026.11.09.1
 // @description  Enrich Loved recordings using String Theory with strict digital-edition matching.
 // @match        https://musicbrainz.org/*
 // @run-at       document-end

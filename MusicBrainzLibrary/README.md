@@ -32,6 +32,24 @@ evidence** and **Export checkpoints**. Reviewed releases are revisited once when
 matching rules improve; **Recheck releases already reviewed** requests another
 pass explicitly.
 
+## Manual intervention
+
+A dedicated **Manual intervention** list shows unresolved releases and
+recordings, with MusicBrainz links and the reasons they could not be completed.
+It includes no digital candidate, no suitable new supported links, provider
+failures, identity/ISRC conflicts, native editor problems and submissions
+needing verification. Recordings with no associated release or failed lookups
+are listed and counted too. Partially successful releases show links to affected
+recordings.
+
+Successful, ready-to-submit and currently running work is excluded. The count
+and **Download manual-intervention list** use the same classification as the
+visible list. The download is plain text for working through the cases outside
+the browser. **All release outcomes** remains available as a collapsed full
+history; raw evidence stays under **Diagnostic evidence**. The list is rebuilt
+from saved checkpoints on reload, so existing campaigns need no migration or
+rerun.
+
 ## Matching and editing policy
 
 - Scope is Loved only. Playlists, indexed folders and saved series are excluded.
@@ -107,6 +125,7 @@ Edit source files, then rebuild the userscript using Deno:
 
 ```sh
 deno task test
+deno task test:browser
 deno task check
 deno task build
 ```
